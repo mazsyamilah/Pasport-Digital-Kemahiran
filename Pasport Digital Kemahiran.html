@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pasport Digital Kemahiran - Ruminan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-green: #2d5a27;
+            --earth-brown: #5d4037;
+            --pasture-light: #f1f8e9;
+        }
+        body { background-color: var(--pasture-light); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .bg-primary { background-color: var(--primary-green); }
+        .text-primary { color: var(--primary-green); }
+        .bg-brown { background-color: var(--earth-brown); }
+        .border-brown { border-color: var(--earth-brown); }
+        
+        .tab-active { border-bottom: 4px solid var(--earth-brown); color: var(--earth-brown); font-weight: bold; }
+        
+        /* Signature Pad */
+        #signature-pad { border: 2px dashed #ccc; background: white; cursor: crosshair; }
+        
+        /* Custom Radio Buttons */
+        .status-btn { transition: all 0.3s; opacity: 0.4; cursor: pointer; }
+        .status-btn.active { opacity: 1; transform: scale(1.1); }
+        
+        .skill-card { display: none; }
+        .skill-card.active { display: block; }
+    </style>
+</head>
+<body class="pb-10">
+
+    <!-- Header -->
+    <header class="bg-primary text-white p-6 shadow-lg text-center">
+        <img src="https://iili.io/qCs62Bs.png" alt="Logo Sekolah" class="mx-auto mb-4" style="width: 200px;">
+        <h1 class="text-2xl font-bold tracking-widest">PASPORT DIGITAL KEMAHIRAN</h1>
+        <p class="text-sm">PANITIA PENGENDALIAN LADANG RUMINAN</p>
+        <p class="text-xs mt-1">TAHUN 2026</p>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="flex sticky top-0 bg-white shadow-md z-50">
+        <button onclick="switchTab('muka-hadapan')" id="btn-tab-1" class="flex-1 py-4 text-center tab-active">MUKA HADAPAN</button>
+        <button onclick="switchTab('dashboard')" id="btn-tab-2" class="flex-1 py-4 text-center">DASHBOARD PENCAPAIAN</button>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <main class="max-w-4xl mx-auto p-4">
+
+        <!-- TAB 1: MUKA HADAPAN -->
+        <section id="tab-muka-hadapan">
+            
+            <!-- Pengurusan Murid -->
+            <div class="bg-white p-6 rounded-xl shadow-md mb-6 border-l-8 border-brown">
+                <h2 class="text-xl font-bold mb-4 text-primary"><i class="fas fa-users mr-2"></i>Pengurusan Murid</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="studentName" placeholder="Nama Penuh Murid" class="border p-3 rounded w-full border-gray-300">
+                    <input type="text" id="studentClass" placeholder="Kelas" class="border p-3 rounded w-full border-gray-300">
+                    <div class="relative">
+                        <label class="block text-xs font-bold mb-1">Gambar Profil:</label>
+                        <input type="file" id="studentPhoto" accept="image/*" class="text-sm">
+                    </div>
+                    <button onclick="addStudent()" class="bg-primary text-white font-bold py-3 rounded hover:bg-green-800">
+                        <i class="fas fa-user-plus mr-2"></i>TAMBAH MURID
+                    </button>
+                </div>
+            </div>
+
+            <!-- Senarai Murid -->
+            <div id="studentListContainer" class="mb-8">
+                <h3 class="font-bold mb-2 text-brown uppercase text-sm">Senarai Murid (Sila Pilih Murid untuk Dinilai):</h3>
+                <div id="studentCards" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <!-- Cards injected by JS -->
+                </div>
+                <div class="mt-4 flex gap-2">
+                    <button onclick="bulkDelete()" class="bg-red-600 text-white px-4 py-2 rounded text-xs"><i class="fas fa-trash-alt mr-1"></i>PADAM PUKAL</button>
+                </div>
+            </div>
+
+            <!-- BORANG PENGISIAN (Hidden until student selected) -->
+            <div id="assessmentForm" class="hidden bg-white rounded-xl shadow-xl overflow-hidden border-2 border-primary">
+                <div class="bg-primary text-white p-4 flex justify-between items-center">
+                    <div>
+                        <p class="text-xs uppercase opacity-80">Menilai Murid:</p>
+                        <h3 id="currentStudentDisplay" class="font-bold text-lg">-</h3>
+                    </div>
+                    <button onclick="closeForm()" class="text-2xl">&times;</button>
+                </div>
+
+                <div class="p-6">
+                    <!-- Skill Pages Container -->
+                    <div id="skillPages">
+                        <!-- Skills will be injected here -->
+                    </div>
+
+                    <!-- Common Inputs (Date, Teacher, Sign) -->
+                    <div class="mt-8 pt-6 border-t-2 border-gray-100">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block font-bold mb-2">Tarikh Pelaksanaan:</label>
+                                <input type="date" id="evalDate" class="border p-3 rounded w-full bg-gray-50">
+                            </div>
+                            <div>
+                                <label class="block font-bold mb-2">Nama Guru:</label>
+                                <input type="text" id="teacherName" placeholder="Nama Guru Penilai" class="border p-3 rounded w-full bg-gray-50">
+                            </div>
+                        </div>
+
+                        <div class="mt-6">
+                            <label class="block font-bold mb-2 text-center">Tandatangan Digital Guru:</label>
+                            <canvas id="signature-pad" width="400" height="150" class="mx-auto rounded w-full max-w-md"></canvas>
+                            <div class="text-center mt-2">
+                                <button onclick="clearSignature()" class="text-xs text-red-500 underline font-bold uppercase">Padam Tandatangan</button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 mt-8">
+                            <button onclick="resetForm()" class="bg-gray-400 text-white font-bold py-4 rounded uppercase">Reset</button>
+                            <button onclick="submitAssessment()" class="bg-primary text-white font-bold py-4 rounded uppercase shadow-lg text-lg">Hantar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rekod Terkini -->
+            <div class="mt-12 bg-white p-6 rounded-xl shadow-md border-t-4 border-primary">
+                <h2 class="text-xl font-bold mb-4 text-primary">Rekod Penilaian</h2>
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <input type="text" id="searchBox" onkeyup="filterRecords()" placeholder="Cari nama murid..." class="border p-2 rounded flex-1">
+                    <select id="filterStatus" onchange="filterRecords()" class="border p-2 rounded">
+                        <option value="">Semua Status</option>
+                        <option value="Terampil">Terampil</option>
+                        <option value="Belum Terampil">Belum Terampil</option>
+                        <option value="Belum Dilaksanakan">Belum Dilaksanakan</option>
+                    </select>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="p-3 border">Timestamp</th>
+                                <th class="p-3 border">Murid</th>
+                                <th class="p-3 border">Kemahiran</th>
+                                <th class="p-3 border">Status</th>
+                                <th class="p-3 border">Tindakan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordsTableBody">
+                            <!-- Table rows injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: DASHBOARD -->
+        <section id="tab-dashboard" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow text-center border-b-8 border-red-500">
+                    <p class="text-gray-500 font-bold">BELUM DILAKSANAKAN</p>
+                    <h3 id="stat-red" class="text-4xl font-black text-red-500">0%</h3>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow text-center border-b-8 border-yellow-500">
+                    <p class="text-gray-500 font-bold">BELUM TERAMPIL</p>
+                    <h3 id="stat-yellow" class="text-4xl font-black text-yellow-500">0%</h3>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow text-center border-b-8 border-green-500">
+                    <p class="text-gray-500 font-bold">TERAMPIL</p>
+                    <h3 id="stat-green" class="text-4xl font-black text-green-500">0%</h3>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow mb-8">
+                <h3 class="text-xl font-bold mb-6 text-primary">Rumusan Kemajuan Mengikut Kategori</h3>
+                <div id="categoryProgress" class="space-y-6">
+                    <!-- Progress bars injected by JS -->
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow overflow-x-auto">
+                <h3 class="text-xl font-bold mb-4 text-primary">Matriks Kemahiran Murid (31 Kemahiran)</h3>
+                <table class="w-full text-[10px] border-collapse">
+                    <thead>
+                        <tr id="matrixHeader" class="bg-gray-800 text-white">
+                            <th class="p-1 border sticky left-0 bg-gray-800 min-w-[100px]">Nama Murid</th>
+                            <!-- 1 to 31 injected -->
+                        </tr>
+                    </thead>
+                    <tbody id="matrixBody">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // --- DATA & CONFIG ---
+        const skillsList = [
+            "Pemeriksaan kawasan pastura dan foder", "Pemeriksaan penanaman pastura dan foder", "Pemeriksaan pagar dan kawasan pemagaran", "Pemeriksaan sistem bekalan air foder dan pastura", "Kerja menuai foder dan persampelan rumput", "Kerja membaja pastura dan foder", "Penghasilan hay", "Penghasilan silaj",
+            "Persediaan kelahiran lembu", "Persediaan kelahiran kambing/bebiri", "Urus kelahiran anak lembu", "Urus kelahiran anak kambing/bebiri", "Pemberian susu selepas kolostrum kepada anak lembu baru lahir", "Pemberian susu selepas kolostrum kepada anak kambing/bebiri baru lahir", "Penjagaan anak lembu cerai susu", "Penjagaan anak kambing/bebiri cerai susu", "Urus lembu cerai susu hingga dewasa", "Urus kambing/bebiri cerai susu hingga dewasa", "Kerja menimbang anak lembu baru lahir sehingga singkiran", "Kerja menimbang anak kambing/bebiri baru lahir sehingga singkiran",
+            "Buat bancuhan makanan ternakan", "Urus pemberian minuman", "Urus pemberian makanan",
+            "Memerah susu", "Lakukan ujian platform susu dan penyimpanan susu", "Analisa rekod ternakan penusu", "Lakukan kerja pemberhentian pengeluaran susu",
+            "Kendali kerja membersih sistem perparitan saliran sisa ternakan", "Asing sisa cecair dan pepejal", "Kerja merawat sisa pepejal", "Rawat sisa cecair ternakan"
+        ];
+
+        const categories = [
+            { name: "Pengendalian Kawasan Pastura & Foder", range: [0, 7] },
+            { name: "Penjagaan Ternakan Ruminan", range: [8, 19] },
+            { name: "Pengendalian Pemakanan Ternakan Ruminan", range: [20, 22] },
+            { name: "Pengendalian Pengeluaran Susu Ternakan Ruminan", range: [23, 26] },
+            { name: "Pengendalian Sisa Ternakan Ruminan", range: [27, 30] }
+        ];
+
+        let students = JSON.parse(localStorage.getItem('pdk_students')) || [];
+        let assessments = JSON.parse(localStorage.getItem('pdk_assessments')) || [];
+        let activeStudentId = null;
+        let selectedSkillIdx = 0;
+        let selectedStatus = "";
+
+        // --- CORE FUNCTIONS ---
+
+        function init() {
+            renderStudents();
+            renderSkillPages();
+            renderMatrixHeader();
+            updateDashboard();
+            renderRecords();
+        }
+
+        function switchTab(tab) {
+            document.getElementById('tab-muka-hadapan').classList.toggle('hidden', tab !== 'muka-hadapan');
+            document.getElementById('tab-dashboard').classList.toggle('hidden', tab !== 'dashboard');
+            document.getElementById('btn-tab-1').classList.toggle('tab-active', tab === 'muka-hadapan');
+            document.getElementById('btn-tab-2').classList.toggle('tab-active', tab === 'dashboard');
+            if(tab === 'dashboard') updateDashboard();
+        }
+
+        // --- STUDENT MANAGEMENT ---
+        function addStudent() {
+            const name = document.getElementById('studentName').value;
+            const sClass = document.getElementById('studentClass').value;
+            const photoInput = document.getElementById('studentPhoto');
+            
+            if(!name || !sClass) return alert("Sila isi nama dan kelas!");
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const newStudent = {
+                    id: Date.now(),
+                    name: name,
+                    class: sClass,
+                    photo: e.target ? e.target.result : null
+                };
+                students.push(newStudent);
+                saveData();
+                renderStudents();
+                document.getElementById('studentName').value = '';
+                document.getElementById('studentClass').value = '';
+            };
+
+            if(photoInput.files[0]) {
+                reader.readAsDataURL(photoInput.files[0]);
+            } else {
+                reader.onload({target: null});
+            }
+        }
+
+        function renderStudents() {
+            const container = document.getElementById('studentCards');
+            container.innerHTML = students.map(s => `
+                <div class="bg-white border rounded-lg p-3 text-center shadow hover:shadow-lg transition cursor-pointer relative group" onclick="openAssessment('${s.id}')">
+                    <button onclick="event.stopPropagation(); deleteStudent(${s.id})" class="absolute top-1 right-1 text-red-400 opacity-0 group-hover:opacity-100 text-xs">✕</button>
+                    <div class="w-16 h-16 mx-auto rounded-full bg-gray-200 overflow-hidden mb-2 border-2 border-primary">
+                        ${s.photo ? `<img src="${s.photo}" class="w-full h-full object-cover">` : `<i class="fas fa-user text-3xl mt-3 text-gray-400"></i>`}
+                    </div>
+                    <p class="font-bold text-xs truncate">${s.name}</p>
+                    <p class="text-[10px] text-gray-500">${s.class}</p>
+                </div>
+            `).join('');
+        }
+
+        function deleteStudent(id) {
+            if(confirm("Padam murid dan semua rekod berkaitan?")) {
+                students = students.filter(s => s.id != id);
+                assessments = assessments.filter(a => a.studentId != id);
+                saveData();
+                renderStudents();
+                renderRecords();
+            }
+        }
+
+        function bulkDelete() {
+            if(confirm("ADAKAH ANDA PASTI? Ini akan memadam SEMUA data murid dan rekod pencapaian!")) {
+                students = [];
+                assessments = [];
+                saveData();
+                renderStudents();
+                renderRecords();
+            }
+        }
+
+        // --- ASSESSMENT FORM ---
+        function openAssessment(studentId) {
+            const student = students.find(s => s.id == studentId);
+            activeStudentId = studentId;
+            document.getElementById('currentStudentDisplay').innerText = `${student.name} (${student.class})`;
+            document.getElementById('assessmentForm').classList.remove('hidden');
+            document.getElementById('studentListContainer').classList.add('hidden');
+            window.scrollTo(0, document.getElementById('assessmentForm').offsetTop - 20);
+        }
+
+        function closeForm() {
+            document.getElementById('assessmentForm').classList.add('hidden');
+            document.getElementById('studentListContainer').classList.remove('hidden');
+            resetForm();
+        }
+
+        function renderSkillPages() {
+            const container = document.getElementById('skillPages');
+            container.innerHTML = `
+                <div class="mb-4">
+                    <label class="block font-bold mb-2">Pilih Kemahiran (1-31):</label>
+                    <select id="skillSelector" onchange="selectedSkillIdx = this.value; updateSkillUI()" class="w-full p-3 border rounded font-bold text-primary">
+                        ${skillsList.map((s, i) => `<option value="${i}">Kemahiran ${i+1}: ${s}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="bg-gray-50 p-6 rounded-xl border-2 border-dashed border-gray-200">
+                    <h4 id="activeSkillTitle" class="text-center font-black text-xl mb-6 text-brown uppercase"></h4>
+                    <div class="flex justify-around items-center">
+                        <div onclick="selectStatus('Belum Dilaksanakan')" id="status-red" class="status-btn text-center">
+                            <div class="w-16 h-16 bg-red-500 rounded-full mx-auto shadow-lg flex items-center justify-center text-white text-2xl"><i class="fas fa-times"></i></div>
+                            <p class="text-[10px] font-bold mt-2">BELUM<br>DILAKSANAKAN</p>
+                        </div>
+                        <div onclick="selectStatus('Belum Terampil')" id="status-yellow" class="status-btn text-center">
+                            <div class="w-16 h-16 bg-yellow-400 rounded-full mx-auto shadow-lg flex items-center justify-center text-white text-2xl"><i class="fas fa-exclamation"></i></div>
+                            <p class="text-[10px] font-bold mt-2">BELUM<br>TERAMPIL</p>
+                        </div>
+                        <div onclick="selectStatus('Terampil')" id="status-green" class="status-btn text-center">
+                            <div class="w-16 h-16 bg-green-500 rounded-full mx-auto shadow-lg flex items-center justify-center text-white text-2xl"><i class="fas fa-check"></i></div>
+                            <p class="text-[10px] font-bold mt-2">TERAMPIL</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            updateSkillUI();
+        }
+
+        function updateSkillUI() {
+            document.getElementById('activeSkillTitle').innerText = skillsList[selectedSkillIdx];
+            document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+            selectedStatus = "";
+        }
+
+        function selectStatus(status) {
+            selectedStatus = status;
+            document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+            if(status === 'Belum Dilaksanakan') document.getElementById('status-red').classList.add('active');
+            if(status === 'Belum Terampil') document.getElementById('status-yellow').classList.add('active');
+            if(status === 'Terampil') document.getElementById('status-green').classList.add('active');
+        }
+
+        function submitAssessment() {
+            const date = document.getElementById('evalDate').value;
+            const teacher = document.getElementById('teacherName').value;
+            const canvas = document.getElementById('signature-pad');
+            const student = students.find(s => s.id == activeStudentId);
+
+            if(!selectedStatus || !date || !teacher) {
+                return alert("Sila lengkapkan SEMUA maklumat (Status, Tarikh, Nama Guru)!");
+            }
+
+            const record = {
+                id: Date.now(),
+                studentId: activeStudentId,
+                studentName: student.name,
+                skillIdx: parseInt(selectedSkillIdx),
+                skillName: skillsList[selectedSkillIdx],
+                status: selectedStatus,
+                date: date,
+                teacher: teacher,
+                timestamp: new Date().toLocaleString(),
+                signature: canvas.toDataURL()
+            };
+
+            // Remove existing record for the same student and skill (Update mode)
+            assessments = assessments.filter(a => !(a.studentId == activeStudentId && a.skillIdx == selectedSkillIdx));
+            
+            assessments.push(record);
+            saveData();
+            alert("Rekod berjaya dihantar!");
+            renderRecords();
+            updateDashboard();
+            closeForm();
+        }
+
+        function resetForm() {
+            selectedStatus = "";
+            document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('evalDate').value = "";
+            document.getElementById('teacherName').value = "";
+            clearSignature();
+        }
+
+        // --- DASHBOARD ---
+        function updateDashboard() {
+            const totalPossible = students.length * 31;
+            if(totalPossible === 0) return;
+
+            const counts = { "Terampil": 0, "Belum Terampil": 0, "Belum Dilaksanakan": 0 };
+            
+            // Map assessments
+            assessments.forEach(a => {
+                counts[a.status]++;
+            });
+
+            // Calculate "Not Executed" for any skills not yet recorded
+            const totalRecorded = assessments.length;
+            counts["Belum Dilaksanakan"] += (totalPossible - totalRecorded);
+
+            document.getElementById('stat-green').innerText = Math.round((counts["Terampil"] / totalPossible) * 100) + "%";
+            document.getElementById('stat-yellow').innerText = Math.round((counts["Belum Terampil"] / totalPossible) * 100) + "%";
+            document.getElementById('stat-red').innerText = Math.round((counts["Belum Dilaksanakan"] / totalPossible) * 100) + "%";
+
+            // Category Summary
+            const catContainer = document.getElementById('categoryProgress');
+            catContainer.innerHTML = categories.map(cat => {
+                const rangeLen = (cat.range[1] - cat.range[0]) + 1;
+                const totalInCat = students.length * rangeLen;
+                const terampilInCat = assessments.filter(a => a.skillIdx >= cat.range[0] && a.skillIdx <= cat.range[1] && a.status === 'Terampil').length;
+                const pct = Math.round((terampilInCat / totalInCat) * 100) || 0;
+
+                return `
+                    <div>
+                        <div class="flex justify-between text-xs font-bold mb-1">
+                            <span>${cat.name}</span>
+                            <span>${pct}% Terampil</span>
+                        </div>
+                        <div class="w-full bg-gray-200 h-4 rounded-full overflow-hidden">
+                            <div class="bg-primary h-full" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            renderMatrix();
+        }
+
+        function renderMatrixHeader() {
+            const header = document.getElementById('matrixHeader');
+            for(let i=1; i<=31; i++) {
+                const th = document.createElement('th');
+                th.className = "p-1 border border-gray-600";
+                th.innerText = i;
+                header.appendChild(th);
+            }
+        }
+
+        function renderMatrix() {
+            const body = document.getElementById('matrixBody');
+            body.innerHTML = students.map(s => {
+                let row = `<td class="p-2 border font-bold sticky left-0 bg-white shadow-sm text-xs">${s.name}</td>`;
+                for(let i=0; i<31; i++) {
+                    const found = assessments.find(a => a.studentId == s.id && a.skillIdx == i);
+                    let color = "bg-red-500";
+                    if(found) {
+                        if(found.status === 'Terampil') color = "bg-green-500";
+                        else if(found.status === 'Belum Terampil') color = "bg-yellow-400";
+                    }
+                    row += `<td class="p-1 border text-center"><div class="w-3 h-3 rounded-full mx-auto ${color}"></div></td>`;
+                }
+                return `<tr class="border-b">${row}</tr>`;
+            }).join('');
+        }
+
+        // --- RECORDS & FILTERING ---
+        function renderRecords() {
+            const body = document.getElementById('recordsTableBody');
+            const sorted = assessments.sort((a,b) => new Date(b.id) - new Date(a.id));
+            
+            body.innerHTML = sorted.map(a => `
+                <tr class="record-row border-b text-xs hover:bg-gray-50" data-name="${a.studentName.toLowerCase()}" data-status="${a.status}">
+                    <td class="p-3 border">${a.timestamp}</td>
+                    <td class="p-3 border font-bold">${a.studentName}</td>
+                    <td class="p-3 border">#${a.skillIdx + 1}: ${a.skillName}</td>
+                    <td class="p-3 border">
+                        <span class="px-2 py-1 rounded text-[10px] text-white ${a.status === 'Terampil' ? 'bg-green-600' : a.status === 'Belum Terampil' ? 'bg-yellow-500' : 'bg-red-500'}">
+                            ${a.status}
+                        </span>
+                    </td>
+                    <td class="p-3 border">
+                        <button onclick="deleteRecord(${a.id})" class="text-red-500"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filterRecords() {
+            const search = document.getElementById('searchBox').value.toLowerCase();
+            const status = document.getElementById('filterStatus').value;
+            const rows = document.querySelectorAll('.record-row');
+
+            rows.forEach(row => {
+                const nameMatch = row.dataset.name.includes(search);
+                const statusMatch = status === "" || row.dataset.status === status;
+                row.style.display = (nameMatch && statusMatch) ? 'table-row' : 'none';
+            });
+        }
+
+        function deleteRecord(id) {
+            if(confirm("Padam rekod ini? Murid boleh dinilai semula.")) {
+                assessments = assessments.filter(a => a.id != id);
+                saveData();
+                renderRecords();
+                updateDashboard();
+            }
+        }
+
+        // --- UTILS ---
+        function saveData() {
+            localStorage.setItem('pdk_students', JSON.stringify(students));
+            localStorage.setItem('pdk_assessments', JSON.stringify(assessments));
+        }
+
+        // --- SIGNATURE PAD LOGIC ---
+        const canvas = document.getElementById('signature-pad');
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+
+        canvas.addEventListener('mousedown', () => drawing = true);
+        canvas.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('touchstart', (e) => { drawing = true; e.preventDefault(); }, {passive: false});
+        canvas.addEventListener('touchend', (e) => { drawing = false; ctx.beginPath(); e.preventDefault(); }, {passive: false});
+        canvas.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            draw({ clientX: touch.clientX, clientY: touch.clientY });
+            e.preventDefault();
+        }, {passive: false});
+
+        function draw(e) {
+            if(!drawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000';
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        function clearSignature() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
